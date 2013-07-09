@@ -1,4 +1,6 @@
 Todo:
--GUI
--Fuzzing by instruction swapping (using smali/baksmali to disassemble)
 
+Intergrate program with GUI
+
+GUI
+-Add option of which fuzzing method

@@ -16,6 +16,16 @@ def _fileopenbox():
     apkpath = fileopenbox(msg,title,default=default)
     return apkpath
 
+def _fuzzmethod():
+	fmethods = [
+		"Byte Changing",
+		"Instruction Swapping"
+	]
+	m = "Please select your desired fuzzing method: "
+	t = "Fuzzing Method Selection"
+	fuzzmethod = buttonbox(msg=m, title=t,choices=fmethods)
+	return fuzzmethod
+
 def dq(s):
     return '"%s"' % s
 
@@ -129,15 +139,14 @@ def _looptimes(msg="Please enter your desired number of times to loop."
         # reply has passed all validation checks.
         # It is an integer between the specified bounds.
 		return reply
-	
-	
 
 def _setup():
 	while 1:
 		choices = [
 			"1. Load APK",
-			"2. Select Fuzz Percent",
-			"3. Select Number of Loops",
+			"2. Select Fuzzing Method",
+			"3. Select Fuzz Percent",
+			"4. Select Number of Loops",
 			"Begin Fuzzing",
 			"Quit"
 			]
@@ -152,11 +161,15 @@ def _setup():
 			apkpath = _fileopenbox()
 			msgbox("APK Loaded:\n" + str(apkpath), "Result")
 		
-		elif reply == "2. Select Fuzz Percent":
+		elif reply =="2. Select Fuzzing Method":
+			fuzzmethod = _fuzzmethod()
+			msgbox("Fuzzing method chosen is:\n" + str(fuzzmethod), "Result")
+		
+		elif reply == "3. Select Fuzz Percent":
 			fuzzpercent = _fuzzpercentage()
 			msgbox("Percentage is:\n" + str(fuzzpercent), "Result")
 		
-		elif reply == "3. Select Number of Loops":
+		elif reply == "4. Select Number of Loops":
 			looptimes = _looptimes()
 			msgbox("Number of loops:\n" + str(looptimes), "Result")
 		
@@ -171,7 +184,7 @@ def _setup():
 			msgbox("Choice:\n\n" + choice + "\n\nis not recognized", "Program Logic Error")
 			return
 
-def _process(msg="aplha", title="beta", text="creta"):
+def _process(msg="Fuzzing is in progress...", title="Android DVM Fuzzer - Fuzzing", text="print out whatever you want here"):
 	return textbox(msg, title, text, codebox=1 )
 
 def denyWindowManagerClose():
@@ -182,9 +195,6 @@ def denyWindowManagerClose():
     x.bell()
     x.destroy()
 
-#-------------------------------------------------------------------
-# textbox
-#-------------------------------------------------------------------
 def textbox(msg=""
     , title=""
     , text=""

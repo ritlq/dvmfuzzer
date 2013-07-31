@@ -1,3 +1,6 @@
+31/7/2013: 	Fix bug that prevent working with big apk.
+			Deletes META-INF in apk to prevent cert error when installing
+
 Todo:
 
 Intergrate program with GUI

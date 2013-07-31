@@ -11,6 +11,7 @@ import re
 import fnmatch
 from math import floor
 from random import randint
+import gui
 
 # read in classes.dex
 #def read_classes(self, path):
@@ -25,7 +26,7 @@ class Dvmfuzzer:
 		stdout = Popen(config.aapt+' dump badging '+path+' | awk -F" " \'/package/ {print $2}\'|awk -F"\'" \'/name=/ {print $2}\'', shell=True, stdout=PIPE).stdout
 		pkg = stdout.read()
 		stdout = Popen(config.aapt+' dump badging '+path+' | awk -F" " \'/launchable-activity/ {print $2}\'|awk -F"\'" \'/name=/ {print $2}\'', shell=True, stdout=PIPE).stdout
-		act = stdout.read()
+		act = stdout.read()		
 		return pkg, act
 
 	def fuzz(self, apkpath, fuzz_percent, loop_times, type):
@@ -51,39 +52,57 @@ class Dvmfuzzer:
 		#		fd.close()
 		#		break
 		
+		
+		stdout = Popen('zip -d "apk/a.apk" META-INF/\*', shell=True, stdout=PIPE)
+		stdout.communicate()
+		
 		stdout = Popen('unzip -j "apk/a.apk" "classes.dex" -d "dex"', shell=True, stdout=PIPE)
-		stdout.wait()
+		stdout.communicate()
 				
 		shutil.copyfile('dex/classes.dex', 'dex/orig_classes.dex')
 				
 		stdout = Popen("cat dex/classes.dex | xxd > dex/orig_classes.txt", shell=True)
-		stdout.wait()
+		stdout.communicate()
 		
 		pkg,act = self.getPkgAct("apk/a.apk")
+		
+		#Insert code to remove files in mani-inf in apk 
+		# zip -d
 		
 		for i in range(int(loop_times)):
 			
 			if type is 'zuff':
+				print "Running zuff"
 				stdout = Popen("cat dex/orig_classes.dex | zzuf -r " + fuzz_percent + " > dex/classes.dex", shell=True, stdout=PIPE)
-				stdout.wait()
+				stdout.communicate()
+				print "Done"
 			elif type is 'swap':
 				self.swapinstruction(fuzz_percent)
 				
-			
+			print "Creating binary dump"
 			stdout = Popen("cat dex/classes.dex | xxd > dex/"+str(i)+"_classes.txt", shell=True)
-			stdout.wait()
+			stdout.communicate()
+			print "Done"
 			
+			print "Creating copy of dex file"
 			shutil.copyfile("dex/classes.dex", "dex/"+str(i)+"_classes.dex")
 			shutil.copyfile("apk/a.apk", "apk/b.apk")
+			print "Done"
 			
+			print "Adding classes.dex into apk"
 			stdout = Popen('zip -j "apk/b.apk" "dex/classes.dex"', shell=True, stdout=PIPE)
-			stdout.wait()
+			stdout.communicate()
+			print "Done"
 			
+			print "Running zipalign"
 			stdout = Popen(config.sdk+'/tools/zipalign -v -f 4 "apk/b.apk" "apk/c.apk"', shell=True, stdout=PIPE)
-			stdout.wait()
+			stdout.communicate()
+			print "Done"
 			
-			stdout = Popen('jarsigner -verbose -keystore '+'"'+config.androiddebugkey+'"'+' -storepass android -keypass android -digestalg SHA1 -sigalg MD5withRSA -sigfile CERT -signedjar "apk/b.apk" "apk/c.apk" androiddebugkey', shell=True, stdout=PIPE)
-			stdout.wait()
+			print "Signing apk"
+			stdout = Popen('jarsigner -verbose -keystore '+'"'+config.androiddebugkey+'"'+' -storepass android -keypass android -digestalg SHA1 -sigalg MD5withRSA -sigfile CERT -signedjar "apk/b.apk" "apk/c.apk" androiddebugkey', shell=True, stdout=PIPE).stdout
+			print stdout.read()
+			print "Done"
 			
 			stdout = Popen(config.sdk+'/platform-tools/adb install "apk/b.apk"', shell=True, stdout=PIPE).stdout
 			print "Installing"
@@ -91,20 +110,20 @@ class Dvmfuzzer:
 			
 			stdout = Popen(config.sdk+'/platform-tools/adb shell am start -n '+pkg.strip()+'/'+act, shell=True, stdout=PIPE)
 			print "Running"
-			stdout.wait()
+			stdout.communicate()
 			
-			time.sleep(5)
+			time.sleep(8)
 			#insert monkeyrunner option here
 			
 			stdout = Popen(config.sdk+'/platform-tools/adb logcat -c', shell=True, stdout=PIPE)
-			stdout.wait()
+			stdout.communicate()
 			
 			stdout = Popen(config.sdk+'/platform-tools/adb logcat -d > logcat/'+str(i)+'_logcat.txt', shell=True, stdout=PIPE)
-			stdout.wait()
+			stdout.communicate()
 
 			print "Unistalling"
 			stdout = Popen(config.sdk+'/platform-tools/adb shell rm -r /data/data/'+pkg, shell=True, stdout=PIPE)
-			stdout.wait()
+			stdout.communicate()
 			stdout = Popen(config.sdk+'/platform-tools/adb uninstall '+pkg, shell=True, stdout=PIPE).stdout
 			print stdout.read()
 		
@@ -117,7 +136,7 @@ class Dvmfuzzer:
 			os.mkdir("dex/dexout")
 		
 		stdout = Popen('java -jar '+config.baksmali+' -o dex/dexout dex/orig_classes.dex', shell=True, stdout=PIPE)
-		stdout.wait()
+		stdout.communicate()
 
 		restring = ""
 		with open('../instructions.txt') as f:
@@ -179,15 +198,13 @@ class Dvmfuzzer:
 				shutil.move("dex/temp", file)
 
 		stdout = Popen('java -Xmx512M -jar '+config.smali+' dex/dexout -o dex/classes.dex', shell=True, stdout=PIPE)
-		stdout.wait()
+		stdout.communicate()
 
-	def main(self):
-		self.fuzz('/root/Desktop/JetBoy-debug.apk', '0.004', '3', 'swap')
+	def main(self): 
+		self.fuzz('/root/Desktop/no.dirtybit.funrun-1.apk', '0.004', '13', 'swap')
 		#self.fuzz('/root/Desktop/JetBoy-debug.apk', '0.004', '3', 'zuff')
 
 
-		
-if __name__ == "__main__":
-    Dvmfuzzer().main()
-	
-	
+if __name__ == '__main__':
+    if True:
+        Dvmfuzzer().main()
